@@ -86,11 +86,16 @@
 
         .friend-item {
             display: flex;
+            flex-direction: column;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .friend-info {
+            display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            font-size: 14px;
+            margin-bottom: 8px;
         }
 
         .status-badge {
@@ -103,6 +108,14 @@
 
         .status-invited { background: #64748b; color: white; }
         .status-accepted { background: var(--accent); color: white; }
+
+        .btn-sms {
+            background: #0ea5e9;
+            font-size: 11px;
+            padding: 5px;
+            width: 100%;
+            margin-top: 5px;
+        }
 
         .action-grid {
             display: grid;
@@ -147,12 +160,18 @@
 
     function addFriend(tripId) {
         const name = prompt("Friend's Name:");
-        const email = prompt("Friend's Email:");
-        if (name && email) {
+        const phone = prompt("Friend's Phone Number (e.g., +1234567890):");
+        if (name && phone) {
             const trip = trips.find(t => t.id === tripId);
-            trip.friends.push({ name, email, accepted: false });
+            trip.friends.push({ name, phone, accepted: false });
             saveAndRender();
         }
+    }
+
+    // New Function to trigger SMS app
+    function sendSMS(phone, dest, date) {
+        const message = encodeURIComponent(`Hey! Join my trip to ${dest} on ${date}. Let me know if you're in!`);
+        window.location.href = `sms:${phone}?body=${message}`;
     }
 
     function toggleStatus(tripId, friendIndex) {
@@ -179,11 +198,14 @@
         trips.forEach(trip => {
             let friendsHtml = trip.friends.map((f, i) => `
                 <div class="friend-item">
-                    <span>${f.name} <small style="color:#94a3b8">(${f.email})</small></span>
-                    <span class="status-badge ${f.accepted ? 'status-accepted' : 'status-invited'}" 
-                          onclick="toggleStatus(${trip.id}, ${i})">
-                        ${f.accepted ? '✓ ACCEPTED' : 'PENDING'}
-                    </span>
+                    <div class="friend-info">
+                        <span>${f.name} <small style="color:#94a3b8">${f.phone}</small></span>
+                        <span class="status-badge ${f.accepted ? 'status-accepted' : 'status-invited'}" 
+                              onclick="toggleStatus(${trip.id}, ${i})">
+                            ${f.accepted ? '✓ ACCEPTED' : 'PENDING'}
+                        </span>
+                    </div>
+                    <button class="btn-sms" onclick="sendSMS('${f.phone}', '${trip.dest}', '${trip.date}')">💬 Send Text Invite</button>
                 </div>
             `).join('');
 
@@ -203,7 +225,6 @@
                         <button class="btn-sm" style="margin-top:10px; width:auto; padding:5px 10px;" onclick="addFriend(${trip.id})">+ Add Friend</button>
                     </div>
 
-                    <button class="btn-invite-main" onclick="alert('Invite sent to your friends list!')">📢 Notify All Friends</button>
                     <button class="btn-del" onclick="deleteTrip(${trip.id})">Remove Trip</button>
                 </div>
             `;
