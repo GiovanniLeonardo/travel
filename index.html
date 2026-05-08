@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TripFlow Pro</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --accent: #22c55e;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container { width: 100%; max-width: 480px; }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        .input-card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #334155;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            color: white;
+            font-size: 15px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .trip-card {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .dest-name { font-size: 22px; font-weight: 700; display: block; margin-bottom: 4px;}
+        .dest-date { color: #94a3b8; font-size: 14px; margin-bottom: 15px; display: block;}
+
+        .friend-section {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+
+        .friend-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 14px;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .status-invited { background: #64748b; color: white; }
+        .status-accepted { background: var(--accent); color: white; }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .btn-sm { font-size: 12px; padding: 8px; background: #475569; }
+        .btn-invite-main { grid-column: span 2; background: var(--primary); margin-top: 10px;}
+        .btn-del { background: transparent; color: #f87171; font-size: 12px; margin-top: 15px; text-decoration: underline;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>TripFlow</h1>
+    
+    <div class="input-card">
+        <input type="text" id="destination" placeholder="📍 Destination">
+        <input type="text" id="dates" placeholder="📅 Dates">
+        <button onclick="addTrip()">Create Trip</button>
+    </div>
+
+    <div id="tripList"></div>
+</div>
+
+<script>
+    let trips = JSON.parse(localStorage.getItem('tripFlowV3')) || [];
+    renderTrips();
+
+    function addTrip() {
+        const dest = document.getElementById('destination').value;
+        const date = document.getElementById('dates').value;
+        if (dest && date) {
+            trips.unshift({ id: Date.now(), dest, date, friends: [] });
+            saveAndRender();
+            document.getElementById('destination').value = '';
+            document.getElementById('dates').value = '';
+        }
+    }
+
+    function addFriend(tripId) {
+        const name = prompt("Friend's Name:");
+        const email = prompt("Friend's Email:");
+        if (name && email) {
+            const trip = trips.find(t => t.id === tripId);
+            trip.friends.push({ name, email, accepted: false });
+            saveAndRender();
+        }
+    }
+
+    function toggleStatus(tripId, friendIndex) {
+        const trip = trips.find(t => t.id === tripId);
+        trip.friends[friendIndex].accepted = !trip.friends[friendIndex].accepted;
+        saveAndRender();
+    }
+
+    function saveAndRender() {
+        localStorage.setItem('tripFlowV3', JSON.stringify(trips));
+        renderTrips();
+    }
+
+    function deleteTrip(id) {
+        if(confirm("Delete this trip?")) {
+            trips = trips.filter(t => t.id !== id);
+            saveAndRender();
+        }
+    }
+
+    function renderTrips() {
+        const list = document.getElementById('tripList');
+        list.innerHTML = '';
+        trips.forEach(trip => {
+            let friendsHtml = trip.friends.map((f, i) => `
+                <div class="friend-item">
+                    <span>${f.name} <small style="color:#94a3b8">(${f.email})</small></span>
+                    <span class="status-badge ${f.accepted ? 'status-accepted' : 'status-invited'}" 
+                          onclick="toggleStatus(${trip.id}, ${i})">
+                        ${f.accepted ? '✓ ACCEPTED' : 'PENDING'}
+                    </span>
+                </div>
+            `).join('');
+
+            list.innerHTML += `
+                <div class="trip-card">
+                    <span class="dest-name">${trip.dest}</span>
+                    <span class="dest-date">${trip.date}</span>
+                    
+                    <div class="action-grid">
+                        <button class="btn-sm" onclick="window.open('https://www.google.com/maps/search/${trip.dest}')">📍 Map</button>
+                        <button class="btn-sm" onclick="window.open('https://www.google.com/search?q=things+to+do+in+${trip.dest}')">🎡 Tips</button>
+                    </div>
+
+                    <div class="friend-section">
+                        <strong style="font-size:13px; color:#cbd5e1;">WHO'S COMING:</strong>
+                        ${friendsHtml || '<p style="font-size:12px; color:#64748b;">No one invited yet.</p>'}
+                        <button class="btn-sm" style="margin-top:10px; width:auto; padding:5px 10px;" onclick="addFriend(${trip.id})">+ Add Friend</button>
+                    </div>
+
+                    <button class="btn-invite-main" onclick="alert('Invite sent to your friends list!')">📢 Notify All Friends</button>
+                    <button class="btn-del" onclick="deleteTrip(${trip.id})">Remove Trip</button>
+                </div>
+            `;
+        });
+    }
+</script>
+
+</body>
+</html>
