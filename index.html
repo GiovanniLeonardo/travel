@@ -16,7 +16,7 @@
         .container { width: 100%; max-width: 480px; }
         h1 { font-size: 2rem; font-weight: 800; background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
         
-        .input-card { background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+        .input-card { background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); display: none; }
         input { width: 100%; padding: 12px; margin-bottom: 10px; background: #334155; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; box-sizing: border-box; }
         
         button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
@@ -46,10 +46,10 @@
 <body>
 
 <div class="container">
-    <h1>TripFlow Cloud</h1>
+    <h1>TripFlow PRO</h1>
     <div id="loadingStatus" class="loading" style="display:none;">Syncing with Sheet...</div>
     
-    <div class="input-card">
+    <div class="input-card" id="adminInput">
         <input type="text" id="destination" placeholder="📍 Destination">
         <input type="text" id="dates" placeholder="📅 Dates">
         <button onclick="addTrip()">Create Trip</button>
@@ -59,8 +59,17 @@
 </div>
 
 <script>
-    // 1. PASTE YOUR SHEETDB API URL HERE
+    // CONFIGURATION
     const API_URL = "https://sheetdb.io/api/v1/f1hca4qpvl829"; 
+    const ADMIN_KEY = "travel"; // Change this to whatever secret you want
+
+    // ADMIN CHECK
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdmin = urlParams.get('admin') === ADMIN_KEY;
+
+    if (isAdmin) {
+        document.getElementById('adminInput').style.display = 'block';
+    }
 
     let trips = [];
 
@@ -137,14 +146,14 @@
 
     function sendSMS(phone, dest, date) {
         if(!phone) return alert("No phone number provided");
-        const msg = encodeURIComponent(`Join our trip to ${dest} on ${date}! RSVP here: ${window.location.href}`);
+        const msg = encodeURIComponent(`Join our trip to ${dest} on ${date}! RSVP here: ${window.location.origin}${window.location.pathname}`);
         window.location.href = `sms:${phone}?body=${msg}`;
     }
 
     function sendEmail(email, dest, date) {
         if(!email) return alert("No email address provided");
         const subject = encodeURIComponent(`Invitation: Trip to ${dest}`);
-        const body = encodeURIComponent(`Hey!\n\nI'm planning a trip to ${dest} on ${date}. Check it out and RSVP here: ${window.location.href}`);
+        const body = encodeURIComponent(`Hey!\n\nI'm planning a trip to ${dest} on ${date}. Check it out and RSVP here: ${window.location.origin}${window.location.pathname}`);
         window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
     }
 
@@ -181,10 +190,11 @@
                     <div class="friend-section">
                         <strong style="font-size:12px; color:#94a3b8;">WHO'S COMING:</strong>
                         ${friendsHtml || '<p style="font-size:12px; color:#64748b;">No one invited yet.</p>'}
-                        <button class="btn-sm" style="margin-top:10px; width:auto; padding:5px 10px;" onclick="addFriend(${trip.id})">+ Add Friend</button>
+                        
+                        ${isAdmin ? `<button class="btn-sm" style="margin-top:10px; width:auto; padding:5px 10px;" onclick="addFriend(${trip.id})">+ Add Friend</button>` : ''}
                     </div>
 
-                    <button class="btn-del" onclick="deleteTrip(${trip.id})">Remove Trip</button>
+                    ${isAdmin ? `<button class="btn-del" onclick="deleteTrip(${trip.id})">Remove Trip</button>` : ''}
                 </div>`;
         });
     }
