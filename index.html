@@ -145,7 +145,7 @@
                         <span>${f.name} <small style="color:#94a3b8">(${f.phone})</small></span>
                         <span class="status-badge ${f.accepted ? 'status-accepted' : 'status-invited'}" 
                               onclick="toggleStatus(${trip.id}, ${i})">
-                            ${f.accepted ? '✓ ACCEPTED' : 'PENDING'}
+                            ${f.accepted ? '✓ ACCEPTED' : 'ACCEPT'}
                         </span>
                     </div>
                     <button class="btn-sms" onclick="sendSMS('${f.phone}', '${trip.dest}', '${trip.date}')">💬 Text Invite</button>
