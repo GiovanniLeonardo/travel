@@ -5,22 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TripFlow Pro (Cloud)</title>
     <style>
-        :root { --primary: #6366f1; --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #22c55e; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        :root { 
+            --primary: #6366f1; 
+            --bg: #0f172a; 
+            --card: #1e293b; 
+            --text: #f8fafc; 
+            --accent: #22c55e; 
+        }
+        body { font-family: 'Inter', -apple-system, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 480px; }
         h1 { font-size: 2rem; font-weight: 800; background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
+        
         .input-card { background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
         input { width: 100%; padding: 12px; margin-bottom: 10px; background: #334155; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; box-sizing: border-box; }
+        
         button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
-        .trip-card { background: var(--card); border-radius: 20px; padding: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+        
+        .trip-card { background: var(--card); border-radius: 20px; padding: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); position: relative; }
         .dest-name { font-size: 22px; font-weight: 700; display: block; }
         .dest-date { color: #94a3b8; font-size: 14px; margin-bottom: 15px; display: block;}
+        
+        /* The Missing Action Grid */
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .btn-sm { font-size: 12px; padding: 8px; background: #475569; }
+        
         .friend-section { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; margin-top: 15px; }
         .friend-item { display: flex; flex-direction: column; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .status-badge { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; }
         .status-invited { background: #64748b; color: white; }
         .status-accepted { background: var(--accent); color: white; }
+        
         .btn-sms { background: #0ea5e9; font-size: 11px; padding: 5px; width: 100%; margin-top: 5px; }
+        .btn-del { background: transparent; color: #f87171; font-size: 11px; margin-top: 15px; text-decoration: underline; width: auto; padding: 0; border: none; cursor: pointer;}
         .loading { text-align: center; color: #94a3b8; font-size: 14px; margin-bottom: 10px; }
     </style>
 </head>
@@ -41,17 +57,15 @@
 
 <script>
     // 1. PASTE YOUR SHEETDB API URL HERE
-    const API_URL = "https://sheetdb.io/api/v1/f1hca4qpvl829"; 
+    const API_URL = "https://sheetdb.io/api/v1/YOUR_API_ID"; 
 
     let trips = [];
 
-    // Fetch trips from Google Sheets on load
     async function loadTrips() {
         document.getElementById('loadingStatus').style.display = 'block';
         try {
             const response = await fetch(API_URL);
             const data = await response.json();
-            // SheetDB returns strings, we need to parse the 'friends' JSON string back to an array
             trips = data.map(t => ({
                 ...t,
                 friends: t.friends ? JSON.parse(t.friends) : []
@@ -87,7 +101,6 @@
         const trip = trips.find(t => t.id == tripId);
         trip.friends.push({ name, phone, accepted: false });
 
-        // Update the row in Google Sheets
         await fetch(`${API_URL}/id/${tripId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -110,8 +123,15 @@
         loadTrips();
     }
 
+    async function deleteTrip(id) {
+        if(confirm("Delete this trip forever?")) {
+            await fetch(`${API_URL}/id/${id}`, { method: 'DELETE' });
+            loadTrips();
+        }
+    }
+
     function sendSMS(phone, dest, date) {
-        const msg = encodeURIComponent(`Check out our trip to ${dest} on ${date}! Open this link to join: ${window.location.href}`);
+        const msg = encodeURIComponent(`Join our trip to ${dest} on ${date}! RSVP here: ${window.location.href}`);
         window.location.href = `sms:${phone}?body=${msg}`;
     }
 
@@ -122,7 +142,7 @@
             let friendsHtml = trip.friends.map((f, i) => `
                 <div class="friend-item">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span>${f.name}</span>
+                        <span>${f.name} <small style="color:#94a3b8">(${f.phone})</small></span>
                         <span class="status-badge ${f.accepted ? 'status-accepted' : 'status-invited'}" 
                               onclick="toggleStatus(${trip.id}, ${i})">
                             ${f.accepted ? '✓ ACCEPTED' : 'PENDING'}
@@ -136,11 +156,19 @@
                 <div class="trip-card">
                     <span class="dest-name">${trip.dest}</span>
                     <span class="dest-date">${trip.date}</span>
-                    <div class="friend-section">
-                        <strong>WHO'S COMING:</strong>
-                        ${friendsHtml || '<p style="font-size:12px;">No one invited.</p>'}
-                        <button style="margin-top:10px; padding:5px;" onclick="addFriend(${trip.id})">+ Add Friend</button>
+                    
+                    <div class="action-grid">
+                        <button class="btn-sm" onclick="window.open('https://www.google.com/maps/search/${encodeURIComponent(trip.dest)}')">📍 Map</button>
+                        <button class="btn-sm" onclick="window.open('https://www.google.com/search?q=things+to+do+in+${encodeURIComponent(trip.dest)}')">🎡 Tips</button>
                     </div>
+
+                    <div class="friend-section">
+                        <strong style="font-size:12px; color:#94a3b8;">WHO'S COMING:</strong>
+                        ${friendsHtml || '<p style="font-size:12px; color:#64748b;">No one invited yet.</p>'}
+                        <button class="btn-sm" style="margin-top:10px; width:auto; padding:5px 10px;" onclick="addFriend(${trip.id})">+ Add Friend</button>
+                    </div>
+
+                    <button class="btn-del" onclick="deleteTrip(${trip.id})">Remove Trip</button>
                 </div>`;
         });
     }
